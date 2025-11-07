@@ -1,46 +1,42 @@
+const express = require('express');
 const WebSocket = require('ws');
+const path = require('path');
 
-const wss = new WebSocket.Server({ port: 8080 });
+const app = express();
+const port = process.env.PORT || 3000;
 
-let videoState = {
-  isPlaying: false,
-  currentTime: 0
-};
+// Serve static client
+app.use(express.static(path.join(__dirname)));
 
-wss.on('connection', (ws) => {
-  console.log('New client connected');
-
-  // Send current video state to the new client
-  ws.send(JSON.stringify({ type: 'sync', state: videoState }));
-
-  ws.on('message', (message) => {
-    try {
-      const data = JSON.parse(message);
-
-      // Update server state
-      if (data.type === 'play') {
-        videoState.isPlaying = true;
-        videoState.currentTime = data.currentTime;
-      } else if (data.type === 'pause') {
-        videoState.isPlaying = false;
-        videoState.currentTime = data.currentTime;
-      } else if (data.type === 'stop') {
-        videoState.isPlaying = false;
-        videoState.currentTime = 0;
-      }
-
-      // Broadcast to all clients
-      wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify(data));
-        }
-      });
-    } catch (err) {
-      console.error(err);
-    }
-  });
-
-  ws.on('close', () => console.log('Client disconnected'));
+// Start HTTP server
+const server = app.listen(port, () => {
+    console.log(`HTTP server running on port ${port}`);
 });
 
-console.log('WebSocket server running on ws://localhost:8080');
+// WebSocket server
+const wss = new WebSocket.Server({ server });
+
+let videoState = { isPlaying: false, currentTime: 0 };
+
+wss.on('connection', (ws) => {
+    ws.send(JSON.stringify({ type: 'sync', state: videoState }));
+
+    ws.on('message', (message) => {
+        const data = JSON.parse(message);
+
+        if (data.type === 'play') {
+            videoState.isPlaying = true;
+            videoState.currentTime = data.currentTime;
+        } else if (data.type === 'pause') {
+            videoState.isPlaying = false;
+            videoState.currentTime = data.currentTime;
+        } else if (data.type === 'stop') {
+            videoState.isPlaying = false;
+            videoState.currentTime = 0;
+        }
+
+        wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(data));
+        });
+    });
+});

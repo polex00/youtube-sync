@@ -15,7 +15,7 @@
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
     let player;
-    let ws = new WebSocket('ws://localhost:8080');
+    let ws = new WebSocket('wss://youtube-sync-szk9.onrender.com');
 
     function onYouTubeIframeAPIReady() {
       player = new YT.Player('player', {
